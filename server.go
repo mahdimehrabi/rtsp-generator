@@ -38,15 +38,15 @@ func (sh *serverHandler) OnSessionOpen(ctx *gortsplib.ServerHandlerOnSessionOpen
 func (sh *serverHandler) OnSessionClose(ctx *gortsplib.ServerHandlerOnSessionCloseCtx) {
 	log.Printf("session closed")
 
-	sh.mutex.Lock()
-	defer sh.mutex.Unlock()
+	//sh.mutex.Lock()
+	//defer sh.mutex.Unlock()
 
 	// if the session is the publisher,
 	// close the stream and disconnect any reader.
-	if sh.stream != nil && ctx.Session == sh.publisher {
-		sh.stream.Close()
-		sh.stream = nil
-	}
+	//if sh.stream != nil && ctx.Session == sh.publisher {
+	//	sh.stream.Close()
+	//	sh.stream = nil
+	//}
 }
 
 // called when receiving a DESCRIBE request.
