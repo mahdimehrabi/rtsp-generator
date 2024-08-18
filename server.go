@@ -144,6 +144,11 @@ func main() {
 		MulticastRTCPPort: 8003,
 	}
 
+	//h.stream.WritePacketRTP(&description.Media{
+	//	ID:      "1",
+	//	Type:    description.MediaTypeVideo,
+	//	Formats: []format.Format{&format.H264{}},
+	//}, &rtp.Packet{})
 	// start server and wait until a fatal error
 	log.Printf("server is ready")
 	panic(h.s.StartAndWait())

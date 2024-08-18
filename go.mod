@@ -3,6 +3,7 @@ module client-rtsp
 go 1.22
 
 require (
+	github.com/abema/go-mp4 v1.2.0 // indirect
 	github.com/bluenviron/gortsplib/v4 v4.10.2 // indirect
 	github.com/bluenviron/mediacommon v1.12.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
