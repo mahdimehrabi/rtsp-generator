@@ -1,7 +1,9 @@
 package main
 
 import (
+	"client-rtsp/packet"
 	"log"
+	"os"
 	"sync"
 
 	"github.com/pion/rtp"
@@ -132,6 +134,18 @@ func (sh *serverHandler) OnRecord(ctx *gortsplib.ServerHandlerOnRecordCtx) (*bas
 }
 
 func main() {
+	go func() {
+		h264 := packet.NewH264PacketGenerator()
+		f, err := os.Open("sample.mp4")
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		defer f.Close()
+		err = h264.Read(f)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+	}()
 	// configure the server
 	h := &serverHandler{}
 	h.s = &gortsplib.Server{
