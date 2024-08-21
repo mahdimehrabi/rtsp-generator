@@ -8,8 +8,9 @@ import (
 	"io"
 )
 
-var ErrorCodecNotH264 = errors.New("track not h264")
-var ErrorTrackNotFound = errors.New("codec not h264")
+var ErrorCodecNotH264 = errors.New("track not found(h264)")
+var ErrorTrackNotFound = errors.New("codec not found(h264)")
+var ErrorSTSZNotFound = errors.New("stsz not found(h264)")
 
 //check if its h264 using avc1
 //get stsz  <------
@@ -19,6 +20,7 @@ var ErrorTrackNotFound = errors.New("codec not h264")
 
 type H264PacketGenerator struct {
 	trakNum int8 //lots of times its 0 or 1
+	stsz    []uint32
 }
 
 func NewH264PacketGenerator() *H264PacketGenerator {
@@ -63,15 +65,25 @@ func (p *H264PacketGenerator) GetTrackInfo(rs io.ReadSeeker) error {
 		fmt.Println(err.Error())
 	}
 	fmt.Println("---get avc1---")
-	for _, box := range boxes {
-		fmt.Println(box.Info.Type)
-		vse := box.Payload.(*mp4.VisualSampleEntry)
-		fmt.Println(vse)
-		return nil
+	if len(boxes) < 1 {
+		return ErrorCodecNotH264
 	}
-	return ErrorCodecNotH264
-}
 
-//func (p *H264PacketGenerator) GetStsz(rs io.ReadSeeker) error {
-//
-//}
+	boxes, err = mp4.ExtractBoxWithPayload(rs, nil, mp4.BoxPath{mp4.BoxTypeMoov(), mp4.BoxTypeTrak(),
+		mp4.BoxTypeMdia(), mp4.BoxTypeMinf(), mp4.BoxTypeStbl(),
+		mp4.BoxTypeStsz()})
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	fmt.Println("---get stsz---")
+	for i, box := range boxes {
+		if i == int(p.trakNum) {
+			stsz := box.Payload.(*mp4.Stsz)
+			p.stsz = stsz.EntrySize
+		}
+	}
+	if len(p.stsz) < 1 {
+		return ErrorSTSZNotFound
+	}
+	return nil
+}
