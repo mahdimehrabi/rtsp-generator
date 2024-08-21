@@ -18,24 +18,28 @@ func TestH264PacketGenerator_Read(t *testing.T) {
 		assetFile string
 		err       error
 		trakNum   int8
+		stszFull  bool
 	}{
 		{
 			name:      "success",
 			assetFile: path.Join(wd, "..", "assets", "sample.mp4"),
 			err:       nil,
 			trakNum:   0,
+			stszFull:  true,
 		},
 		{
 			name:      "ErrorTrackNotFound",
 			assetFile: path.Join(wd, "..", "assets", "sample.flv"),
 			err:       ErrorTrackNotFound,
 			trakNum:   -1,
+			stszFull:  false,
 		},
 		{
 			name:      "ErrorCodecNotH264",
 			assetFile: path.Join(wd, "..", "assets", "sample_h265.mp4"),
 			err:       ErrorCodecNotH264,
 			trakNum:   0,
+			stszFull:  false,
 		},
 	}
 
@@ -53,6 +57,9 @@ func TestH264PacketGenerator_Read(t *testing.T) {
 			}
 			if hpg.trakNum != tt.trakNum {
 				t.Fatalf("tack num is not equal %d %d", hpg.trakNum, tt.trakNum)
+			}
+			if tt.stszFull != (len(hpg.stsz) > 0) {
+				t.Fatalf("stsz full flag is not equal to %v", tt.stszFull)
 			}
 		})
 	}
