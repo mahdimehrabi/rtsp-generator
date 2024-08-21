@@ -44,7 +44,7 @@ func (p *H264PacketGenerator) GetTrackInfo(rs io.ReadSeeker) error {
 	boxes, err := mp4.ExtractBoxWithPayload(rs, nil, mp4.BoxPath{mp4.BoxTypeMoov(), mp4.BoxTypeTrak(),
 		mp4.BoxTypeMdia(), mp4.BoxTypeHdlr()})
 	if err != nil {
-		fmt.Println(err.Error())
+		return ErrorTrackNotFound
 	}
 	for i, box := range boxes {
 		fmt.Println(box.Info.Type)
@@ -62,7 +62,7 @@ func (p *H264PacketGenerator) GetTrackInfo(rs io.ReadSeeker) error {
 	boxes, err = mp4.ExtractBoxWithPayload(rs, nil, mp4.BoxPath{mp4.BoxTypeMoov(), mp4.BoxTypeTrak(),
 		mp4.BoxTypeMdia(), mp4.BoxTypeMinf(), mp4.BoxTypeStbl(), mp4.BoxTypeStsd(), mp4.BoxTypeAvc1()})
 	if err != nil {
-		fmt.Println(err.Error())
+		return ErrorCodecNotH264
 	}
 	fmt.Println("---get avc1---")
 	if len(boxes) < 1 {
@@ -73,7 +73,7 @@ func (p *H264PacketGenerator) GetTrackInfo(rs io.ReadSeeker) error {
 		mp4.BoxTypeMdia(), mp4.BoxTypeMinf(), mp4.BoxTypeStbl(),
 		mp4.BoxTypeStsz()})
 	if err != nil {
-		fmt.Println(err.Error())
+		return ErrorSTSZNotFound
 	}
 	fmt.Println("---get stsz---")
 	for i, box := range boxes {
