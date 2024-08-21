@@ -8,21 +8,23 @@ import (
 	"io"
 )
 
-var NotH264Error = errors.New("codec is not h264")
+var ErrorCodecNotH264 = errors.New("track not h264")
+var ErrorTrackNotFound = errors.New("codec not h264")
 
 //check if its h264 using avc1
-//get stsz
+//get stsz  <------
 //extract mdat
 //encapsulate each packet using stsz into nal unit
 // extract sps and pps
 
 type H264PacketGenerator struct {
-	trakNum uint8 //lots of times its 0 or 1
-	n       uint
+	trakNum int8 //lots of times its 0 or 1
 }
 
 func NewH264PacketGenerator() *H264PacketGenerator {
-	return &H264PacketGenerator{}
+	return &H264PacketGenerator{
+		trakNum: -1,
+	}
 }
 
 func (p *H264PacketGenerator) Read(rs io.ReadSeeker) error {
@@ -33,7 +35,7 @@ func (p *H264PacketGenerator) Read(rs io.ReadSeeker) error {
 }
 
 func (p *H264PacketGenerator) GetNextPacket() (*rtp.Packet, error) {
-	return nil, NotH264Error
+	return nil, ErrorCodecNotH264
 }
 
 func (p *H264PacketGenerator) GetTrackInfo(rs io.ReadSeeker) error {
@@ -46,11 +48,13 @@ func (p *H264PacketGenerator) GetTrackInfo(rs io.ReadSeeker) error {
 		fmt.Println(box.Info.Type)
 		hdlr := box.Payload.(*mp4.Hdlr)
 		if hdlr.HandlerType == VideoHandlerType {
-			p.trakNum = uint8(i)
+			p.trakNum = int8(i)
 			fmt.Printf("track %d is video h264\n", i)
 			break
 		}
-		return nil
+	}
+	if p.trakNum == -1 {
+		return ErrorTrackNotFound
 	}
 
 	boxes, err = mp4.ExtractBoxWithPayload(rs, nil, mp4.BoxPath{mp4.BoxTypeMoov(), mp4.BoxTypeTrak(),
@@ -65,5 +69,9 @@ func (p *H264PacketGenerator) GetTrackInfo(rs io.ReadSeeker) error {
 		fmt.Println(vse)
 		return nil
 	}
-	return NotH264Error
+	return ErrorCodecNotH264
 }
+
+//func (p *H264PacketGenerator) GetStsz(rs io.ReadSeeker) error {
+//
+//}
