@@ -19,6 +19,7 @@ func TestH264PacketGenerator_Read(t *testing.T) {
 		err       error
 		trakNum   int8
 		stszFull  bool
+		mdatEmpty bool
 	}{
 		{
 			name:      "success",
@@ -26,6 +27,7 @@ func TestH264PacketGenerator_Read(t *testing.T) {
 			err:       nil,
 			trakNum:   0,
 			stszFull:  true,
+			mdatEmpty: false,
 		},
 		{
 			name:      "ErrorTrackNotFound",
@@ -33,6 +35,7 @@ func TestH264PacketGenerator_Read(t *testing.T) {
 			err:       ErrorTrackNotFound,
 			trakNum:   -1,
 			stszFull:  false,
+			mdatEmpty: true,
 		},
 		{
 			name:      "ErrorCodecNotH264",
@@ -40,6 +43,7 @@ func TestH264PacketGenerator_Read(t *testing.T) {
 			err:       ErrorCodecNotH264,
 			trakNum:   0,
 			stszFull:  false,
+			mdatEmpty: true,
 		},
 	}
 
@@ -60,6 +64,9 @@ func TestH264PacketGenerator_Read(t *testing.T) {
 			}
 			if tt.stszFull != (len(hpg.stsz) > 0) {
 				t.Fatalf("stsz full flag is not equal to %v", tt.stszFull)
+			}
+			if (len(hpg.mdat) < 1) != tt.mdatEmpty {
+				t.Fatalf("mdatEmpty status is not equal to %v", tt.mdatEmpty)
 			}
 		})
 	}
