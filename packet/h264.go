@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	ErrorCodecNotH264  = errors.New("track not found(h264)")
-	ErrorTrackNotFound = errors.New("codec not found(h264)")
+	ErrorCodecNotH264  = errors.New("codec is not h264")
+	ErrorTrackNotFound = errors.New("track not found(h264)")
 	ErrorSTSZNotFound  = errors.New("stsz not found(h264)")
 )
 
@@ -18,15 +18,14 @@ const (
 	PayloadTypeH264 = 96
 )
 
-//check if its h264 using avc1
-//get stsz
-//extract mdat and encapsulate each packet using stsz into nal unit <------
+// check if its h264 using avc1
+// get stsz
+// extract mdat and encapsulate each packet using stsz into nal unit <------
 // extract sps and pps
-
 type H264PacketGenerator struct {
 	trakNum  int8     //lots of times its 0 or 1
 	stsz     []uint32 //frames
-	frameNum uint32
+	frameNum uint32   //counter to generate packets and iterate through frames
 	mdat     []byte
 }
 
@@ -44,8 +43,34 @@ func (p *H264PacketGenerator) Read(rs io.ReadSeeker) error {
 }
 
 func (p *H264PacketGenerator) GetNextPacket() (*rtp.Packet, error) {
-
-	return nil, ErrorCodecNotH264
+	if len(p.stsz) < int(p.frameNum)+1 {
+		//TODO: add ability to choose video be looped to stream or io.EOF and close stream
+		p.frameNum = 0
+	}
+	var start uint32
+	if p.frameNum > 0 {
+		start = p.stsz[p.frameNum-1]
+	}
+	end := p.stsz[p.frameNum]
+	frame := make([]byte, end-start+1)
+	for i := start; i <= end; i++ {
+		frame[i-start] = p.mdat[i]
+	}
+	packet := &rtp.Packet{
+		Header: rtp.Header{
+			Version:        2,
+			Padding:        false,
+			Extension:      false,
+			Marker:         false,
+			PayloadType:    PayloadTypeH264,
+			SequenceNumber: 0,
+			Timestamp:      0,
+			SSRC:           0,
+		},
+		Payload: frame,
+	}
+	p.frameNum++
+	return packet, nil
 }
 
 func (p *H264PacketGenerator) extractMetaData(rs io.ReadSeeker) error {
@@ -111,19 +136,5 @@ func (p *H264PacketGenerator) getMdat(rs io.ReadSeeker) error {
 	}
 	mdat := boxes[0].Payload.(*mp4.Mdat)
 	p.mdat = mdat.Data
-	//packet := &rtp.Packet{
-	//	Header: rtp.Header{
-	//		Version:        2,
-	//		Padding:        false,
-	//		Extension:      false,
-	//		Marker:         false,
-	//		PayloadType:    PayloadTypeH264,
-	//		SequenceNumber: 0,
-	//		Timestamp:      0,
-	//		SSRC:           0,
-	//	},
-	//	Payload: b,
-	//}
-
 	return nil
 }
