@@ -2,16 +2,15 @@ package main
 
 import (
 	"client-rtsp/packet"
-	"github.com/pion/rtp"
-	"log"
-	"os"
-	"sync"
-	"time"
-
+	"fmt"
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
+	"github.com/pion/rtp"
+	"log"
+	"os"
+	"sync"
 )
 
 type serverHandler struct {
@@ -196,12 +195,11 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-
+			fmt.Println(pkt)
 			err = h.stream.WritePacketRTP(&media, pkt)
 			if err != nil {
 				log.Fatal(err)
 			}
-			time.Sleep(1 * time.Second)
 		}
 	}()
 

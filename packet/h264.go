@@ -55,7 +55,7 @@ func (p *H264PacketGenerator) GetNextPacket() (*rtp.Packet, error) {
 	if p.frameNum > 0 {
 		start = p.stsz[p.frameNum-1]
 	}
-	end := p.stsz[p.frameNum]
+	end := start + p.stsz[p.frameNum]
 	frame := make([]byte, end-start+1)
 	for i := start; i <= end; i++ {
 		frame[i-start] = p.mdat[i]
@@ -63,11 +63,11 @@ func (p *H264PacketGenerator) GetNextPacket() (*rtp.Packet, error) {
 	pktData := make([]byte, MaxPacketSize)
 	frameByteIndex := p.packetCounter * MaxPacketSize
 	j := 0
-	for i := frameByteIndex; i <= len(frame) && j < MaxPacketSize; i++ {
+	for i := frameByteIndex; i < len(frame) && j < MaxPacketSize; i++ {
 		pktData[j] = frame[i]
 		j++
 	}
-	if j < MaxPacketSize {
+	if j < MaxPacketSize-1 {
 		// frame ended next frame
 		p.frameNum++
 		p.packetCounter = 0
@@ -75,6 +75,7 @@ func (p *H264PacketGenerator) GetNextPacket() (*rtp.Packet, error) {
 		//get next packet from this frame too
 		p.packetCounter++
 	}
+	fmt.Println("packet counter", p.packetCounter, "frame counter", p.frameNum)
 
 	packet := &rtp.Packet{
 		Header: rtp.Header{
