@@ -2,11 +2,11 @@ package main
 
 import (
 	"client-rtsp/packet"
+	"github.com/pion/rtp"
 	"log"
 	"os"
 	"sync"
-
-	"github.com/pion/rtp"
+	"time"
 
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
@@ -158,11 +158,53 @@ func main() {
 		MulticastRTCPPort: 8003,
 	}
 
-	//h.stream.WritePacketRTP(&description.Media{
-	//	ID:      "1",
-	//	Type:    description.MediaTypeVideo,
-	//	Formats: []format.Format{&format.H264{}},
-	//}, &rtp.Packet{})
+	go func() {
+		h264 := packet.NewH264PacketGenerator()
+		f, err := os.Open("sample.mp4")
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		defer f.Close()
+		err = h264.Read(f)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		url, err := base.ParseURL("rtsp://localhost/stream")
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		media := description.Media{
+			ID:   "1",
+			Type: description.MediaTypeVideo,
+			Formats: []format.Format{&format.H264{
+				PayloadTyp: packet.PayloadTypeH264,
+				PPS:        h264.PPS,
+				SPS:        h264.SPS,
+			}},
+		}
+		session := &description.Session{
+			BaseURL:   url,
+			Title:     "My Stream",
+			FECGroups: make([]description.SessionFECGroup, 0),
+			Medias: []*description.Media{
+				&media,
+			},
+		}
+		h.stream = gortsplib.NewServerStream(h.s, session)
+		for {
+			pkt, err := h264.GetNextPacket()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			err = h.stream.WritePacketRTP(&media, pkt)
+			if err != nil {
+				log.Fatal(err)
+			}
+			time.Sleep(1 * time.Second)
+		}
+	}()
+
 	// start server and wait until a fatal error
 	log.Printf("server is ready")
 	panic(h.s.StartAndWait())

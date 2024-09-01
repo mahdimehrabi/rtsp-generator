@@ -71,3 +71,42 @@ func TestH264PacketGenerator_Read(t *testing.T) {
 		})
 	}
 }
+
+func TestH264PacketGenerator_GetNextPacket(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+	var tests = []struct {
+		name      string
+		assetFile string
+		err       error
+		trakNum   int8
+		stszFull  bool
+		mdatEmpty bool
+	}{
+		{
+			name:      "success",
+			assetFile: path.Join(wd, "..", "assets", "sample.mp4"),
+			err:       nil,
+			trakNum:   0,
+			stszFull:  true,
+			mdatEmpty: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hpg := NewH264PacketGenerator()
+			f, err := os.Open(tt.assetFile)
+			if err != nil {
+				t.Fatal("Cannot open asset file")
+			}
+			err = hpg.Read(f)
+			if err != nil {
+				t.Fatal("Cannot read data")
+			}
+			hpg.GetNextPacket()
+		})
+	}
+}

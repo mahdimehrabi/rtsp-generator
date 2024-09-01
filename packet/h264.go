@@ -16,17 +16,21 @@ var (
 
 const (
 	PayloadTypeH264 = 96
+	MaxPacketSize   = 1272
 )
 
 // check if its h264 using avc1
 // get stsz
 // extract mdat and encapsulate each packet using stsz into nal unit <------
-// extract sps and pps
+// extract SPS and PPS
 type H264PacketGenerator struct {
-	trakNum  int8     //lots of times its 0 or 1
-	stsz     []uint32 //frames
-	frameNum uint32   //counter to generate packets and iterate through frames
-	mdat     []byte
+	trakNum       int8     //lots of times its 0 or 1
+	stsz          []uint32 //frames
+	frameNum      uint32   //counter to generate packets and iterate through frames
+	mdat          []byte
+	PPS           []byte
+	SPS           []byte
+	packetCounter int //number of packets generated from current frame
 }
 
 func NewH264PacketGenerator() *H264PacketGenerator {
@@ -56,6 +60,22 @@ func (p *H264PacketGenerator) GetNextPacket() (*rtp.Packet, error) {
 	for i := start; i <= end; i++ {
 		frame[i-start] = p.mdat[i]
 	}
+	pktData := make([]byte, MaxPacketSize)
+	frameByteIndex := p.packetCounter * MaxPacketSize
+	j := 0
+	for i := frameByteIndex; i <= len(frame) && j < MaxPacketSize; i++ {
+		pktData[j] = frame[i]
+		j++
+	}
+	if j < MaxPacketSize {
+		// frame ended next frame
+		p.frameNum++
+		p.packetCounter = 0
+	} else {
+		//get next packet from this frame too
+		p.packetCounter++
+	}
+
 	packet := &rtp.Packet{
 		Header: rtp.Header{
 			Version:        2,
@@ -67,9 +87,8 @@ func (p *H264PacketGenerator) GetNextPacket() (*rtp.Packet, error) {
 			Timestamp:      0,
 			SSRC:           0,
 		},
-		Payload: frame,
+		Payload: pktData,
 	}
-	p.frameNum++
 	return packet, nil
 }
 
@@ -92,15 +111,19 @@ func (p *H264PacketGenerator) extractMetaData(rs io.ReadSeeker) error {
 		return ErrorTrackNotFound
 	}
 
+	fmt.Println("---get avc1---")
 	boxes, err = mp4.ExtractBoxWithPayload(rs, nil, mp4.BoxPath{mp4.BoxTypeMoov(), mp4.BoxTypeTrak(),
-		mp4.BoxTypeMdia(), mp4.BoxTypeMinf(), mp4.BoxTypeStbl(), mp4.BoxTypeStsd(), mp4.BoxTypeAvc1()})
+		mp4.BoxTypeMdia(), mp4.BoxTypeMinf(), mp4.BoxTypeStbl(), mp4.BoxTypeStsd(), mp4.BoxTypeAvc1(),
+		mp4.BoxTypeAvcC()})
 	if err != nil {
 		return ErrorCodecNotH264
 	}
-	fmt.Println("---get avc1---")
-	if len(boxes) < 1 {
+	avcBox, ok := boxes[0].Payload.(*mp4.AVCDecoderConfiguration)
+	if !ok || len(boxes) < 1 || len(avcBox.PictureParameterSets) < 1 || len(avcBox.SequenceParameterSets) < 1 {
 		return ErrorCodecNotH264
 	}
+	p.PPS = avcBox.PictureParameterSets[0].NALUnit
+	p.SPS = avcBox.SequenceParameterSets[0].NALUnit
 
 	boxes, err = mp4.ExtractBoxWithPayload(rs, nil, mp4.BoxPath{mp4.BoxTypeMoov(), mp4.BoxTypeTrak(),
 		mp4.BoxTypeMdia(), mp4.BoxTypeMinf(), mp4.BoxTypeStbl(),
